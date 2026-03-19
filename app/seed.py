@@ -63,7 +63,7 @@ WORKOUT_SEED = [
     {
         "day_name": "friday",
         "title": "Hands Workout",
-        "description": "A heavier split for posterior chain and legs.",
+        "description": "Train biceps, triceps, and forearms.",
         "video_url": "https://www.youtube.com/watch?v=roCP6wCXPqo",
         "exercises": [
             {"name": "Deadlift", "sets": "4", "reps": "5-8"},
@@ -78,7 +78,7 @@ WORKOUT_SEED = [
     {
         "day_name": "saturday",
         "title": "abbs Workout",
-        "description": "Train biceps, triceps, and forearms.",
+        "description": "Train your core with focused abs exercises.",
         "video_url": "https://www.youtube.com/watch?v=ykJmrZ5v0Oo",
         "exercises": [
             {"name": "abb crunches", "sets": "4", "reps": "15-20"},
