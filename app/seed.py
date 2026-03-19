@@ -105,18 +105,27 @@ WORKOUT_SEED = [
 
 
 def seed_workouts(db: Session) -> None:
-    already_seeded = db.query(WorkoutDay).first()
-    if already_seeded:
-        return
+    existing_days = {
+        workout_day.day_name: workout_day
+        for workout_day in db.query(WorkoutDay).all()
+    }
+    seed_day_names = {day["day_name"] for day in WORKOUT_SEED}
+
+    for stale_day_name, stale_day in list(existing_days.items()):
+        if stale_day_name not in seed_day_names:
+            db.delete(stale_day)
 
     for day in WORKOUT_SEED:
-        workout_day = WorkoutDay(
-            day_name=day["day_name"],
-            title=day["title"],
-            description=day["description"],
-            video_url=day["video_url"],
-        )
+        workout_day = existing_days.get(day["day_name"])
+        if not workout_day:
+            workout_day = WorkoutDay(day_name=day["day_name"])
+            db.add(workout_day)
 
+        workout_day.title = day["title"]
+        workout_day.description = day["description"]
+        workout_day.video_url = day["video_url"]
+
+        workout_day.exercises.clear()
         for exercise in day["exercises"]:
             workout_day.exercises.append(
                 Exercise(
@@ -125,7 +134,5 @@ def seed_workouts(db: Session) -> None:
                     reps=exercise["reps"],
                 )
             )
-
-        db.add(workout_day)
 
     db.commit()
