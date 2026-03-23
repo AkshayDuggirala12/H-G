@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import Exercise, ExerciseProgress, User, WorkoutDay
+from app.models import User, UserExerciseProgress, UserPlanAssignment, WorkoutPlanDay, WorkoutPlanExercise
 from app.schemas import (
     ExerciseProgressStatus,
     ExerciseProgressToggle,
@@ -17,10 +17,55 @@ from app.schemas import (
 router = APIRouter(prefix="/progress", tags=["Progress"])
 
 
-def build_day_progress(workout_day: WorkoutDay, progress_date: date, user_id: int) -> WorkoutDayProgressResponse:
+def get_assigned_workout_plan_day(
+    db: Session,
+    current_user: User,
+    day_name: str,
+) -> WorkoutPlanDay:
+    assignment = db.query(UserPlanAssignment).filter(UserPlanAssignment.user_id == current_user.id).first()
+    if not assignment or not assignment.workout_plan:
+        raise HTTPException(status_code=404, detail="No workout plan assigned for this user")
+
+    workout_day = (
+        db.query(WorkoutPlanDay)
+        .filter(
+            WorkoutPlanDay.workout_plan_id == assignment.workout_plan_id,
+            WorkoutPlanDay.day_name == day_name.strip().lower(),
+        )
+        .first()
+    )
+    if not workout_day:
+        raise HTTPException(status_code=404, detail="Workout day not found in assigned plan")
+    return workout_day
+
+
+def get_assigned_workout_day_from_exercise(
+    db: Session,
+    current_user: User,
+    exercise_id: int,
+) -> tuple[WorkoutPlanDay, WorkoutPlanExercise]:
+    assignment = db.query(UserPlanAssignment).filter(UserPlanAssignment.user_id == current_user.id).first()
+    if not assignment or not assignment.workout_plan:
+        raise HTTPException(status_code=404, detail="No workout plan assigned for this user")
+
+    exercise = (
+        db.query(WorkoutPlanExercise)
+        .join(WorkoutPlanDay, WorkoutPlanExercise.workout_day_id == WorkoutPlanDay.id)
+        .filter(
+            WorkoutPlanExercise.id == exercise_id,
+            WorkoutPlanDay.workout_plan_id == assignment.workout_plan_id,
+        )
+        .first()
+    )
+    if not exercise:
+        raise HTTPException(status_code=404, detail="Exercise not found in assigned workout plan")
+    return exercise.workout_day, exercise
+
+
+def build_day_progress(workout_day: WorkoutPlanDay, progress_date: date, user_id: int) -> WorkoutDayProgressResponse:
     progress_map = {
         progress.exercise_id: progress
-        for progress in workout_day.exercise_progress
+        for progress in workout_day.progress_entries
         if progress.user_id == user_id and progress.progress_date == progress_date
     }
 
@@ -41,6 +86,7 @@ def build_day_progress(workout_day: WorkoutDay, progress_date: date, user_id: in
 
     return WorkoutDayProgressResponse(
         day_name=workout_day.day_name,
+        title=workout_day.title,
         progress_date=progress_date,
         completed_exercises=completed_exercises,
         total_exercises=total_exercises,
@@ -58,29 +104,20 @@ def toggle_exercise_progress(
     current_user: User = Depends(get_current_user),
 ):
     progress_date = payload.progress_date or date.today()
-
-    target_exercise = db.query(Exercise).filter(Exercise.id == payload.exercise_id).first()
-    if not target_exercise:
-        raise HTTPException(status_code=404, detail="Exercise not found")
-
-    workout_day = (
-        db.query(WorkoutDay)
-        .filter(WorkoutDay.id == target_exercise.workout_day_id)
-        .first()
-    )
+    workout_day, target_exercise = get_assigned_workout_day_from_exercise(db, current_user, payload.exercise_id)
 
     progress = (
-        db.query(ExerciseProgress)
+        db.query(UserExerciseProgress)
         .filter(
-            ExerciseProgress.user_id == current_user.id,
-            ExerciseProgress.exercise_id == payload.exercise_id,
-            ExerciseProgress.progress_date == progress_date,
+            UserExerciseProgress.user_id == current_user.id,
+            UserExerciseProgress.exercise_id == target_exercise.id,
+            UserExerciseProgress.progress_date == progress_date,
         )
         .first()
     )
 
     if not progress:
-        progress = ExerciseProgress(
+        progress = UserExerciseProgress(
             user_id=current_user.id,
             workout_day_id=workout_day.id,
             exercise_id=target_exercise.id,
@@ -91,14 +128,9 @@ def toggle_exercise_progress(
     progress.is_completed = payload.is_completed
     progress.completed_at = datetime.now(timezone.utc) if payload.is_completed else None
     db.commit()
-    db.refresh(workout_day)
 
-    workout_day = (
-        db.query(WorkoutDay)
-        .filter(WorkoutDay.id == workout_day.id)
-        .first()
-    )
-    return build_day_progress(workout_day, progress_date, current_user.id)
+    refreshed_day = db.query(WorkoutPlanDay).filter(WorkoutPlanDay.id == workout_day.id).first()
+    return build_day_progress(refreshed_day, progress_date, current_user.id)
 
 
 @router.get("/days/{day_name}", response_model=WorkoutDayProgressResponse)
@@ -108,14 +140,7 @@ def get_day_progress(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    workout_day = (
-        db.query(WorkoutDay)
-        .filter(WorkoutDay.day_name == day_name.strip().lower())
-        .first()
-    )
-    if not workout_day:
-        raise HTTPException(status_code=404, detail="Workout day not found")
-
+    workout_day = get_assigned_workout_plan_day(db, current_user, day_name)
     return build_day_progress(workout_day, progress_date or date.today(), current_user.id)
 
 
@@ -125,8 +150,17 @@ def get_weekly_progress(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    assignment = db.query(UserPlanAssignment).filter(UserPlanAssignment.user_id == current_user.id).first()
+    if not assignment or not assignment.workout_plan:
+        raise HTTPException(status_code=404, detail="No workout plan assigned for this user")
+
     selected_date = progress_date or date.today()
-    workout_days = db.query(WorkoutDay).order_by(WorkoutDay.id.asc()).all()
+    workout_days = (
+        db.query(WorkoutPlanDay)
+        .filter(WorkoutPlanDay.workout_plan_id == assignment.workout_plan_id)
+        .order_by(WorkoutPlanDay.sort_order.asc(), WorkoutPlanDay.id.asc())
+        .all()
+    )
 
     weekly_items: list[WeeklyProgressItem] = []
     for workout_day in workout_days:
