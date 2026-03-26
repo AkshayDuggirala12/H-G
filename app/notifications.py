@@ -1,5 +1,6 @@
 import json
 import logging
+import socket
 from urllib import error, request
 
 from app.config import settings
@@ -79,17 +80,31 @@ def send_access_request_notification(user: User, access_request: ClientAccessReq
             error_body = exc.read().decode("utf-8", errors="ignore")
         except Exception:
             error_body = ""
-        logger.exception(
+        logger.warning(
             "EmailJS HTTP error for client_id=%s status=%s body=%s",
             user.id,
             exc.code,
             error_body,
         )
         return False
-    except error.URLError:
-        logger.exception(
-            "EmailJS connection error for client_id=%s email=%s",
-            user.id,
-            user.email,
-        )
+    except error.URLError as exc:
+        reason = getattr(exc, "reason", None)
+        if isinstance(reason, OSError) and getattr(reason, "errno", None) == 101:
+            logger.warning(
+                "EmailJS skipped for client_id=%s because outbound network is unavailable on this host",
+                user.id,
+            )
+        elif isinstance(reason, socket.timeout):
+            logger.warning(
+                "EmailJS timed out for client_id=%s email=%s",
+                user.id,
+                user.email,
+            )
+        else:
+            logger.warning(
+                "EmailJS connection error for client_id=%s email=%s reason=%s",
+                user.id,
+                user.email,
+                reason or exc,
+            )
         return False
