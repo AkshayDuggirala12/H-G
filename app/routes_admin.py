@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_admin_user
 from app.models import (
+    ClientAccessRequest,
     DietMeal,
     DietPlan,
     User,
@@ -174,6 +175,18 @@ def assign_plans_to_user(
     assignment.workout_plan_id = payload.workout_plan_id
     assignment.diet_plan_id = payload.diet_plan_id
     assignment.assigned_at = datetime.now(timezone.utc)
+
+    latest_pending_request = (
+        db.query(ClientAccessRequest)
+        .filter(
+            ClientAccessRequest.user_id == user.id,
+            ClientAccessRequest.status == "pending",
+        )
+        .order_by(ClientAccessRequest.created_at.desc(), ClientAccessRequest.id.desc())
+        .first()
+    )
+    if latest_pending_request and (payload.workout_plan_id is not None or payload.diet_plan_id is not None):
+        latest_pending_request.status = "approved"
 
     db.commit()
     refreshed_assignment = db.query(UserPlanAssignment).filter(UserPlanAssignment.user_id == user.id).first()

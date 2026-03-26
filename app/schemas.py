@@ -174,3 +174,37 @@ class WeeklyProgressItem(BaseModel):
     remaining_exercises: int
     percentage: float
     is_day_completed: bool
+
+
+class ClientAccessRequestCreate(BaseModel):
+    age: int
+    weight_kg: str
+    height_cm: str
+    workout_frequency: str
+    goals: str
+
+
+class ClientAccessRequestResponse(BaseModel):
+    id: int
+    user_id: int
+    age: int
+    weight_kg: str
+    height_cm: str
+    workout_frequency: str
+    goals: str
+    status: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ClientAccessRequestAdminResponse(BaseModel):
+    id: int
+    status: str
+    age: int
+    weight_kg: str
+    height_cm: str
+    workout_frequency: str
+    goals: str
+    created_at: datetime
+    user: UserResponse

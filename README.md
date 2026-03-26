@@ -6,8 +6,11 @@ This project is a starter FastAPI backend for a gym application.
 
 - User registration
 - User login with JWT token
-- Weekly workout plan API
-- SQLite database for easy local setup
+- Admin-created workout and diet plans
+- Client plan assignment by user ID
+- Workout progress tracking
+- Client intake/access request flow
+- SQLite or PostgreSQL support
 
 ## Run locally
 
@@ -28,18 +31,25 @@ Open:
 
 - `POST /auth/register`
 - `POST /auth/login`
-- `GET /workouts/weekly`
-- `GET /workouts/days/{day_name}`
+- `POST /admin/workout-plans`
+- `POST /admin/diet-plans`
+- `POST /admin/users/{user_id}/assign-plans`
+- `GET /clients/my-plans`
+- `POST /clients/access-request`
+- `GET /clients/access-request/me`
+- `GET /clients/access-requests`
+- `GET /progress/weekly`
+- `GET /progress/days/{day_name}`
 
-## Example weekly split
+## Trainer workflow
 
-- Monday: Legs
-- Tuesday: Chest
-- Wednesday: Lats
-- Thursday: Shoulders
-- Friday: Back + Legs
-- Saturday: Hands
-- Sunday: Active Rest
+- Register/login as admin using the email set in `ADMIN_EMAIL`
+- Create workout plans with `POST /admin/workout-plans`
+- Create diet plans with `POST /admin/diet-plans`
+- Assign both plans to a client with `POST /admin/users/{user_id}/assign-plans`
+- Clients fetch their assigned plans with `GET /clients/my-plans`
+- Unassigned clients can submit age, weight, height, workout frequency, and goals with `POST /clients/access-request`
+- Admin can review requests with `GET /clients/access-requests`
 
 ## Free deployment options
 

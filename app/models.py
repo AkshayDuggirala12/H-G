@@ -27,6 +27,12 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    access_requests: Mapped[list["ClientAccessRequest"]] = relationship(
+        "ClientAccessRequest",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        order_by="ClientAccessRequest.created_at.desc()",
+    )
 
 
 class WorkoutPlan(Base):
@@ -158,3 +164,19 @@ class UserExerciseProgress(Base):
     user: Mapped[User] = relationship("User", back_populates="exercise_progress")
     workout_day: Mapped[WorkoutPlanDay] = relationship("WorkoutPlanDay", back_populates="progress_entries")
     exercise: Mapped[WorkoutPlanExercise] = relationship("WorkoutPlanExercise", back_populates="progress_entries")
+
+
+class ClientAccessRequest(Base):
+    __tablename__ = "client_access_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    age: Mapped[int] = mapped_column(Integer, nullable=False)
+    weight_kg: Mapped[str] = mapped_column(String(20), nullable=False)
+    height_cm: Mapped[str] = mapped_column(String(20), nullable=False)
+    workout_frequency: Mapped[str] = mapped_column(String(100), nullable=False)
+    goals: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+    user: Mapped[User] = relationship("User", back_populates="access_requests")
