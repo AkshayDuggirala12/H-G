@@ -91,6 +91,8 @@ class WorkoutPlanExercise(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     sets: Mapped[str] = mapped_column(String(50), nullable=False)
     reps: Mapped[str] = mapped_column(String(50), nullable=False)
+    gif_url: Mapped[str] = mapped_column(String(500), default="", nullable=False)
+    instructions: Mapped[str] = mapped_column(Text, default="", nullable=False)
 
     workout_day: Mapped[WorkoutPlanDay] = relationship("WorkoutPlanDay", back_populates="exercises")
     progress_entries: Mapped[list["UserExerciseProgress"]] = relationship(

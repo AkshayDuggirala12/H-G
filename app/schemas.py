@@ -34,6 +34,8 @@ class WorkoutExerciseCreate(BaseModel):
     name: str
     sets: str
     reps: str
+    gif_url: str = ""
+    instructions: str = ""
 
 
 class WorkoutDayCreate(BaseModel):
@@ -55,6 +57,8 @@ class WorkoutExerciseResponse(BaseModel):
     name: str
     sets: str
     reps: str
+    gif_url: str
+    instructions: str
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -151,6 +155,8 @@ class ExerciseProgressStatus(BaseModel):
     exercise_name: str
     is_completed: bool
     completed_at: datetime | None = None
+    gif_url: str = ""
+    instructions: str = ""
 
 
 class WorkoutDayProgressResponse(BaseModel):

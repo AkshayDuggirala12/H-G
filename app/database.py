@@ -28,6 +28,17 @@ def initialize_database() -> None:
             else:
                 connection.execute(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0"))
 
+        if "workout_plan_exercises" in inspector.get_table_names():
+            exercise_columns = {column["name"] for column in inspector.get_columns("workout_plan_exercises")}
+            if "gif_url" not in exercise_columns:
+                connection.execute(
+                    text("ALTER TABLE workout_plan_exercises ADD COLUMN gif_url VARCHAR(500) NOT NULL DEFAULT ''")
+                )
+            if "instructions" not in exercise_columns:
+                connection.execute(
+                    text("ALTER TABLE workout_plan_exercises ADD COLUMN instructions TEXT NOT NULL DEFAULT ''")
+                )
+
 
 def get_db():
     db = SessionLocal()

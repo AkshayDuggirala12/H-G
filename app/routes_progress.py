@@ -75,6 +75,8 @@ def build_day_progress(workout_day: WorkoutPlanDay, progress_date: date, user_id
             exercise_name=exercise.name,
             is_completed=bool(progress_map.get(exercise.id) and progress_map[exercise.id].is_completed),
             completed_at=progress_map.get(exercise.id).completed_at if progress_map.get(exercise.id) else None,
+            gif_url=exercise.gif_url,
+            instructions=exercise.instructions,
         )
         for exercise in workout_day.exercises
     ]

@@ -45,6 +45,7 @@ Open:
 
 - Register/login as admin using the email set in `ADMIN_EMAIL`
 - Create workout plans with `POST /admin/workout-plans`
+- Include `gif_url` and `instructions` on each exercise so the client app can open a demo GIF when the user taps an exercise
 - Create diet plans with `POST /admin/diet-plans`
 - Assign both plans to a client with `POST /admin/users/{user_id}/assign-plans`
 - Clients fetch their assigned plans with `GET /clients/my-plans`

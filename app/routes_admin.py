@@ -92,6 +92,8 @@ def create_workout_plan(
                     name=exercise.name,
                     sets=exercise.sets,
                     reps=exercise.reps,
+                    gif_url=exercise.gif_url,
+                    instructions=exercise.instructions,
                 )
             )
 
